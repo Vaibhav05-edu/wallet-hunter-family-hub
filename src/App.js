@@ -2,49 +2,46 @@ import React, { useState } from "react";
 import OTPAuth from "./components/OTPAuth";
 import HeadForm from "./components/HeadForm";
 import FamilyForm from "./components/FamilyForm";
+import TreeView from "./components/TreeView";
 
 function App() {
-  const [user, setUser] = useState(null);         // For OTP-logged-in user
-  const [headData, setHeadData] = useState(null); // Head form data
-  const [familyData, setFamilyData] = useState(null); // Family form data
+  const [user, setUser] = useState(null);             // Logged-in user from OTP
+  const [headData, setHeadData] = useState(null);     // Data from HeadForm
+  const [familyData, setFamilyData] = useState(null); // Data from FamilyForm
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Wallet Hunter - Family Hub</h1>
+    <div style={{ padding: "20px", maxWidth: "800px", margin: "auto" }}>
+      <h1 style={{ textAlign: "center" }}>Wallet Hunter – Family Hub</h1>
 
-      {/* Step 1: OTP Login */}
+      {/* STEP 1: Login */}
       {!user && <OTPAuth onLogin={setUser} />}
 
-      {/* Step 2: Head Form */}
+      {/* STEP 2: Head Registration */}
       {user && !headData && (
         <HeadForm
           onSubmit={(data) => {
-            console.log("✅ Head Submitted:", data);
+            console.log("Head Data Submitted:", data);
             setHeadData(data);
           }}
         />
       )}
 
-      {/* Step 3: Family Form */}
+      {/* STEP 3: Add Family Members */}
       {user && headData && !familyData && (
         <FamilyForm
           onSubmit={(members) => {
-            console.log("✅ Family Submitted:", members);
+            console.log("Family Members Submitted:", members);
             setFamilyData(members);
           }}
         />
       )}
 
-      {/* Step 4: Summary */}
+      {/* STEP 4: Show Family Tree */}
       {user && headData && familyData && (
-        <div>
-          <h2>🎉 Registration Complete</h2>
-          <h3>👤 Head Summary</h3>
-          <pre>{JSON.stringify(headData, null, 2)}</pre>
-
-          <h3>👨‍👩‍👧 Family Members</h3>
-          <pre>{JSON.stringify(familyData, null, 2)}</pre>
-        </div>
+        <>
+          <h2 style={{ textAlign: "center" }}>🎉 Registration Complete</h2>
+          <TreeView headData={headData} familyData={familyData} />
+        </>
       )}
     </div>
   );
