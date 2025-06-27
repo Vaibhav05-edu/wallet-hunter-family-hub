@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { auth, RecaptchaVerifier } from "../firebase/config";
 import { signInWithPhoneNumber } from "firebase/auth";
 
@@ -8,6 +8,11 @@ function OTPAuth({ onLogin }) {
   const [confirmationResult, setConfirmationResult] = useState(null);
   const [message, setMessage] = useState("");
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    console.log("✅ OTPAuth component mounted");
+  }, []);
 
   const setupRecaptcha = () => {
     if (!window.recaptchaVerifier) {
@@ -15,16 +20,22 @@ function OTPAuth({ onLogin }) {
         "recaptcha-container",
         {
           size: "invisible",
-          callback: () => sendOTP(), // Automatically retry on success
+          callback: (response) => {
+            console.log("✅ Recaptcha solved:", response);
+            sendOTP();
+          },
         },
         auth
       );
+      window.recaptchaVerifier.render().then((widgetId) => {
+        console.log("🛡 Recaptcha widget ID:", widgetId);
+      });
     }
   };
 
   const sendOTP = async () => {
     if (!phoneNumber.startsWith("+")) {
-      alert("Please use international format (e.g. +91XXXXXXXXXX)");
+      alert("Use full international format, e.g. +91XXXXXXXXXX");
       return;
     }
 
@@ -32,33 +43,42 @@ function OTPAuth({ onLogin }) {
     const appVerifier = window.recaptchaVerifier;
 
     try {
+      setLoading(true);
       const result = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
       setConfirmationResult(result);
-      setMessage("OTP sent to " + phoneNumber);
       setStep(2);
-    } catch (error) {
-      console.error(error);
-      alert("Error sending OTP. Check console.");
+      setMessage("✅ OTP sent to " + phoneNumber);
+    } catch (err) {
+      console.error("❌ Failed to send OTP:", err);
+      alert("Could not send OTP. See console.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const verifyOTP = async () => {
-    if (!otp || !confirmationResult) return alert("Please enter OTP");
+    if (!otp || !confirmationResult) {
+      alert("Please enter the OTP sent to your phone.");
+      return;
+    }
 
     try {
+      setLoading(true);
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
       setMessage("✅ Phone verified: " + user.phoneNumber);
-      onLogin(user); // Pass back to parent
+      onLogin(user); // send to parent
     } catch (error) {
-      console.error(error);
-      alert("❌ Invalid OTP");
+      console.error("❌ Invalid OTP:", error);
+      alert("Incorrect OTP");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "400px", margin: "auto" }}>
-      <h2>OTP Login</h2>
+    <div style={{ padding: "20px", border: "1px solid #ccc", borderRadius: "8px" }}>
+      <h2>🔐 Login with OTP</h2>
 
       {step === 1 && (
         <>
@@ -67,10 +87,12 @@ function OTPAuth({ onLogin }) {
             placeholder="Enter phone number (e.g. +91XXXXXXXXXX)"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
-            style={{ width: "100%", marginBottom: "10px" }}
+            style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
           />
           <div id="recaptcha-container"></div>
-          <button onClick={sendOTP}>Send OTP</button>
+          <button onClick={sendOTP} disabled={loading}>
+            {loading ? "Sending OTP..." : "Send OTP"}
+          </button>
         </>
       )}
 
@@ -81,13 +103,15 @@ function OTPAuth({ onLogin }) {
             placeholder="Enter OTP"
             value={otp}
             onChange={(e) => setOtp(e.target.value)}
-            style={{ width: "100%", marginBottom: "10px" }}
+            style={{ width: "100%", padding: "8px", marginTop: "10px", marginBottom: "10px" }}
           />
-          <button onClick={verifyOTP}>Verify OTP</button>
+          <button onClick={verifyOTP} disabled={loading}>
+            {loading ? "Verifying..." : "Verify OTP"}
+          </button>
         </>
       )}
 
-      {message && <p>{message}</p>}
+      {message && <p style={{ color: "green", marginTop: "10px" }}>{message}</p>}
     </div>
   );
 }
